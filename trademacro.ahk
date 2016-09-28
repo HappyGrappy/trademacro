@@ -68,6 +68,8 @@ global iniFilePath := "config.ini"
 global IniLeagueName := FunctionReadValueFromIni("SearchLeague", "tmpstandard", "Search")
 global LeagueName := Leagues[IniLeagueName]
 global MouseMoveThreshold := 
+global CacheExpireAge := FunctionReadValueFromIni("Expire", 0, "Cache")
+global fontSize := FunctionReadValueFromIni("FontSize", "15", "Misc")
 global Debug :=
 
 Gosub, SubroutineReadIniValues
@@ -99,18 +101,56 @@ return
 ; Custom Input String Search
 CustomInputSearch:
 IfWinActive, Path of Exile ahk_class Direct3DWindowClass 
-{   
+{
   Global X
   Global Y
   MouseGetPos, X, Y	
   InputBox,ItemName,Price Check,Item Name,,250,100,X-160,Y - 250,,30,
   if ItemName {
+	
+
 	PostData := "league=" . LeagueName . "&type=&base=&name=" . ItemName . "&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
-    
+
     FunctionPostItemData(PostData)
   }
 }
 return
+
+; == Function PriceCache ==================================
+getPriceCacheAge(itemname)
+{
+	filepath := "cache\price\" . itemname
+	if FileExist(filepath)
+	{
+		FileGetTime, modificationTime, %filepath%
+		var1 = %modificationTime% ; replace file date variable with var1
+		var2 = %A_Now% ; replace current time variable with var2
+		EnvSub, var2, %var1%, Minutes
+		if var2 < CacheExpireAge
+			return var2
+		else
+			return -1
+	}
+	else
+	{
+		return -1
+	}
+}
+
+saveCache(itemname, data)
+{
+	filepath := "cache\price\" . itemname
+	if FileExist(filepath)
+		FileDelete %filepath%
+	FileAppend, %data%, %filepath%
+}
+
+dispCacheData(itemname, cacheAge)
+{
+	filepath := "cache\price\" . itemname
+	FileRead, data, %filepath%
+	FunctionShowToolTipPriceInfo(data . "`n(" . cacheAge . " min ago)")
+}
 
 ; == Function Stuff =======================================
 
@@ -125,7 +165,9 @@ FunctionPostItemData(Payload)
   
   ;FileDelete, result.txt
   ;FileAppend, %result%, result.txt
-  FunctionShowToolTipPriceInfo(result)    
+  FunctionShowToolTipPriceInfo(result . "`n(0 min ago)")
+  
+  return result
 }
 
 ; This is for the tooltip, so it shows it and starts a timer that watches mouse movement.
@@ -139,10 +181,85 @@ FunctionShowToolTipPriceInfo(responsecontent)
 	Global X
     Global Y
     MouseGetPos, X, Y	
-	gui, font, s15, Lucida Console
+	ToolTipFont("s" . %fontSize%, "Lucida Console")
     ToolTip, %responsecontent%, X - 135, Y + 30
     SetTimer, SubWatchCursorPrice, 100     
 
+}
+
+; == Tooltip Custom Font Function ==================
+ToolTipFont(Options := "", Name := "", hwnd := "") {
+    static hfont := 0
+    if (hwnd = "")
+        hfont := Options="Default" ? 0 : _TTG("Font", Options, Name), _TTHook()
+    else
+        DllCall("SendMessage", "ptr", hwnd, "uint", 0x30, "ptr", hfont, "ptr", 0)
+}
+ 
+ToolTipColor(Background := "", Text := "", hwnd := "") {
+    static bc := "", tc := ""
+    if (hwnd = "") {
+        if (Background != "")
+            bc := Background="Default" ? "" : _TTG("Color", Background)
+        if (Text != "")
+            tc := Text="Default" ? "" : _TTG("Color", Text)
+        _TTHook()
+    }
+    else {
+        VarSetCapacity(empty, 2, 0)
+        DllCall("UxTheme.dll\SetWindowTheme", "ptr", hwnd, "ptr", 0
+            , "ptr", (bc != "" && tc != "") ? &empty : 0)
+        if (bc != "")
+            DllCall("SendMessage", "ptr", hwnd, "uint", 1043, "ptr", bc, "ptr", 0)
+        if (tc != "")
+            DllCall("SendMessage", "ptr", hwnd, "uint", 1044, "ptr", tc, "ptr", 0)
+    }
+}
+ 
+_TTHook() {
+    static hook := 0
+    if !hook
+        hook := DllCall("SetWindowsHookExW", "int", 4
+            , "ptr", RegisterCallback("_TTWndProc"), "ptr", 0
+            , "uint", DllCall("GetCurrentThreadId"), "ptr")
+}
+ 
+_TTWndProc(nCode, _wp, _lp) {
+    Critical 999
+   ;lParam  := NumGet(_lp+0*A_PtrSize)
+   ;wParam  := NumGet(_lp+1*A_PtrSize)
+    uMsg    := NumGet(_lp+2*A_PtrSize, "uint")
+    hwnd    := NumGet(_lp+3*A_PtrSize)
+    if (nCode >= 0 && (uMsg = 1081 || uMsg = 1036)) {
+        _hack_ = ahk_id %hwnd%
+        WinGetClass wclass, %_hack_%
+        if (wclass = "tooltips_class32") {
+            ToolTipColor(,, hwnd)
+            ToolTipFont(,, hwnd)
+        }
+    }
+    return DllCall("CallNextHookEx", "ptr", 0, "int", nCode, "ptr", _wp, "ptr", _lp, "ptr")
+}
+ 
+_TTG(Cmd, Arg1, Arg2 := "") {
+    static htext := 0, hgui := 0
+    if !htext {
+        Gui _TTG: Add, Text, +hwndhtext
+        Gui _TTG: +hwndhgui +0x40000000
+    }
+    Gui _TTG: %Cmd%, %Arg1%, %Arg2%
+    if (Cmd = "Font") {
+        GuiControl _TTG: Font, %htext%
+        SendMessage 0x31, 0, 0,, ahk_id %htext%
+        return ErrorLevel
+    }
+    if (Cmd = "Color") {
+        hdc := DllCall("GetDC", "ptr", htext, "ptr")
+        SendMessage 0x138, hdc, htext,, ahk_id %hgui%
+        clr := DllCall("GetBkColor", "ptr", hdc, "uint")
+        DllCall("ReleaseDC", "ptr", htext, "ptr", hdc)
+        return clr
+    }
 }
 
 ; == The Goods =====================================
@@ -163,14 +280,14 @@ FunctionReadItemFromClipboard() {
   ; Only does anything if POE is the window with focus
   IfWinActive, Path of Exile ahk_class Direct3DWindowClass
   {
-    ; Send a ^C to copy the item information to the clipboard
+	; Send a ^C to copy the item information to the clipboard
 	; Note: This will trigger any Item Info/etc. script that monitors the clipboard
-    Send ^c
-    ; Wait 250ms - without this the item information doesn't get to the clipboard in time
-    Sleep 250
+	Send ^c
+	; Wait 250ms - without this the item information doesn't get to the clipboard in time
+	Sleep 250
 	; Get what's on the clipboard
-    ClipBoardData = %clipboard%
-    ; Split the clipboard data into strings to make sure it looks like a properly
+	ClipBoardData = %clipboard%
+	; Split the clipboard data into strings to make sure it looks like a properly
 	; formatted item, looking for the Rarity: tag in the first line. Just in case
 	; something weird got copied to the clipboard.
 	StringSplit, data, ClipBoardData, `n, `r
@@ -181,31 +298,41 @@ FunctionReadItemFromClipboard() {
 	; If the first line on the clipboard has Rarity: it is probably some item
 	; information from POE, so we'll send it to my server to process. Otherwise
 	; we just don't do anything at all.
-    IfInString, data1, Rarity:
-    {
-        ; TODO, write a better code for all this
-        
-        ItemName := data2 . " " . data3
-        IfInString, data3, ---
-        {
-            ItemName := data2
-        }
-        ; If item was linked from chat, there's this extra string we need to eliminate
-        StringReplace ItemName, ItemName, <<set:MS>><<set:M>><<set:S>>, , A
-        
-        QualityParam := "q_min="
-        IfInString, data1, Rarity: Gem
-        {
-            IfInString, RawItemData, Quality: 
-            {
-                QualityParam .= StrX(RawItemData, "Quality: +", 1,10, "%",1,1 )
-            }
-        }
-    
-        Payload := "league=" . LeagueName . "&type=&base=&name=" . ItemName . "&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&" . QualityParam . "&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
-         
-	  FunctionPostItemData(Payload)
-	} 	
+	IfInString, data1, Rarity:
+	{
+		; TODO, write a better code for all this
+		
+		ItemName := data2 . " " . data3
+		IfInString, data3, ---
+		{
+			ItemName := data2
+		}
+		
+		cacheAge := getPriceCacheAge(ItemName)
+		if (CacheExpireAge != 0 && cacheAge != -1 && cacheAge < CacheExpireAge)
+		{
+			dispCacheData(ItemName, cacheAge)
+		}
+		else
+		{
+			; If item was linked from chat, there's this extra string we need to eliminate
+			StringReplace ItemName, ItemName, <<set:MS>><<set:M>><<set:S>>, , A
+			
+			QualityParam := "q_min="
+			IfInString, data1, Rarity: Gem
+			{
+				IfInString, RawItemData, Quality: 
+				{
+					QualityParam .= StrX(RawItemData, "Quality: +", 1,10, "%",1,1 )
+				}
+			}
+		
+			Payload := "league=" . LeagueName . "&type=&base=&name=" . ItemName . "&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&" . QualityParam . "&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
+			
+			resdata := FunctionPostItemData(Payload)
+			saveCache(ItemName, resdata)
+		}
+	}
   }  
 }
 

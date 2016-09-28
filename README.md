@@ -19,22 +19,32 @@ AutoHotKey script that provides various useful macro for trading in Path of Exil
 
 By default, the script is set to the current softcore temp league. To switch to HC:
 
-Edit the ahk script, find these lines,
+Edit the config.ini, find these lines,
 
 ```
-global LeagueName := "Essence"
-;global LeagueName := "Hardcore Essence"
-;global LeagueName := "Standard"
-;global LeagueName := "Hardcore"
+[Search]
+SearchLeague = "tmpstandard"
+; Possible values: 
+; 	"tmpstandard" (current SC Temp-League) 
+;	"tmphardcore" (current HC Temp-League) 
+;	"standard", 
+;	"hardcore"
 ```
 
 Change it to,
 
 ```
-;global LeagueName := "Essence"
-global LeagueName := "Hardcore Essence"
-;global LeagueName := "Standard"
-;global LeagueName := "Hardcore"
+[Search]
+SearchLeague = "tmphardcore"
+; Possible values: 
+; 	"tmpstandard" (current SC Temp-League) 
+;	"tmphardcore" (current HC Temp-League) 
+;	"standard", 
+;	"hardcore"
 ```
 
 TradeScript is not affiliated with GGG and is a fan made tool, 100% open source and free(as in freedom).
+
+Non-Github Contributors:
+/u/mebiustos (for fixing font and cache results)
+/u/gvieira (for chat linked item fix)
