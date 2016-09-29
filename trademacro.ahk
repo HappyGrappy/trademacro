@@ -27,6 +27,9 @@
 ; 0.1 (2016/09/23): Re-write to use pure AHK, previous version used Java, project called "longan"
 ;
 
+; Register a function to be called on exit:
+OnExit("ExitFunc")
+
 ; == Startup Options ===========================================
 #SingleInstance force
 #NoEnv 
@@ -54,6 +57,8 @@ else
 }
 
 ; == Variables and Options and Stuff ===========================
+FileRemoveDir, %A_WorkingDir%\tempFiles, 1
+FileCreateDir, %A_WorkingDir%\tempFiles
 
 ; *******************************************************************
 ; *******************************************************************
@@ -61,8 +66,7 @@ else
 ; *******************************************************************
 ; *******************************************************************
 ; League Name must be specified in config file, otherwise the search defaults to Standard League
-
-global LeagueJSONFile := "leagues.json"
+global LeagueJSONFile := "tempFiles\leagues.json"
 global Leagues := FunctionGETLeagues()
 global iniFilePath := "config.ini"
 global tempLeagueIsRunning := FunctionCheckIfTempLeagueIsRunning()
@@ -182,8 +186,8 @@ FunctionPostItemData(Payload)
   html := FunctionDoPostRequest(Payload)
   result := FunctionParseHtml(html, Payload)
   
-  ;FileDelete, result.txt
-  ;FileAppend, %result%, result.txt
+  ;FileDelete, tempFiles\result.txt
+  ;FileAppend, %result%, tempFiles\result.txt
   FunctionShowToolTipPriceInfo(result . "`n(0 min ago)")
   
   return result
@@ -366,8 +370,8 @@ StrPutVar(Str, ByRef Var, Enc = "")
 
 FunctionDoPostRequest(payload)
 {
-	;FileDelete, payload.txt
-    ;FileAppend, %payload%, payload.txt
+	;FileDelete, tempFiles\payload.txt
+    ;FileAppend, %payload%, tempFiles\payload.txt
     
     ; TODO: split this function, HTTP POST and Html parsing should be separate
     ; Reference in making POST requests - http://stackoverflow.com/questions/158633/how-can-i-send-an-http-post-request-to-a-server-from-excel-using-vba
@@ -397,9 +401,9 @@ FunctionDoPostRequest(payload)
     ; Dear GGG, it would be nice if you can provide an API like http://pathofexile.com/trade/search?name=Veil+of+the+night&links=4
     ; Pete's indexer is open sourced here - https://github.com/trackpete/exiletools-indexer you can use this to provide this api
     html := HttpObj.ResponseText
-    ;FileRead, html, Test1.txt
-    ;FileDelete, html.htm
-    ;FileAppend, %html%, html.htm
+    ;FileRead, html, tempFiles\Test1.txt
+    ;FileDelete, tempFiles\html.htm
+    ;FileAppend, %html%, tempFiles\html.htm
     
     Return, html
 }
@@ -626,9 +630,9 @@ FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     IfNotExist, %A_ScriptDir%\%filename%
         FunctionDoFreshMacroSearch(Payload, filename)
     
-    FileReadLine, line, %A_ScriptDir%\%filename%, %LineNumber%
-    FileReadLine, itemName, %A_ScriptDir%\%filename%, 1
-    
+    FileReadLine, line, %A_ScriptDir%\tempFiles\%filename%, %LineNumber%
+    FileReadLine, itemName, %A_ScriptDir%\tempFiles\%filename%, 1
+
     if (!line)
         result := "No more items found in " filename
     else {
@@ -661,7 +665,7 @@ FunctionToWTB(itemName, line)
 ; ------------------ GET LEAGUES ------------------ 
 FunctionGETLeagues(){
     JSON := FunctionGetLeaguesJSON()    
-    FileRead, JSONFile, leagues.json  
+    FileRead, JSONFile, temp\leagues.json  
     ; too dumb to parse the file to JSON Object, skipping this tstep
     ;parsedJSON 	:= JSON.Load(JSONFile)	
         
@@ -753,7 +757,7 @@ DateParse(str) {
 
 FunctionGetTempLeagueDates(){
     JSON := FunctionGetLeaguesJSON()    
-    FileRead, JSONFile, leagues.json  
+    FileRead, JSONFile, temp\leagues.json  
     ; too dumb to parse the file to JSON Object, skipping this step
     ;parsedJSON 	:= JSON.Load(JSONFile)	
      
@@ -888,4 +892,11 @@ FunctionSavePredefSearchesToIni(){
     IniWrite, %PredefinedSearch02Url%, %iniFilePath%, Search, PredefinedSearch02Url
     IniWrite, %PredefinedSearch03Url%, %iniFilePath%, Search, PredefinedSearch03Url
     Gosub, SubroutineReadIniValues
+}
+
+; ------------------ Handle OnExit ------------------
+ExitFunc(ExitReason, ExitCode)
+{
+    FileRemoveDir, %A_WorkingDir%\tempFiles, 1
+    ExitApp
 }
