@@ -65,7 +65,9 @@ else
 global LeagueJSONFile := "leagues.json"
 global Leagues := FunctionGETLeagues()
 global iniFilePath := "config.ini"
-global IniLeagueName := FunctionReadValueFromIni("SearchLeague", "tmpstandard", "Search")
+global tempLeagueIsRunning := FunctionCheckIfTempLeagueIsRunning()
+global defaultLeague := ( (tempLeagueIsRunning > 0) ? "tmpstandard" : "standard" )
+global IniLeagueName := FunctionReadValueFromIni("SearchLeague", defaultLeague, "Search")
 global LeagueName := Leagues[IniLeagueName]
 global MouseMoveThreshold := 
 global CacheExpireAge := FunctionReadValueFromIni("Expire", 0, "Cache")
@@ -682,7 +684,6 @@ FunctionGETLeagues(){
             }
         }        
 	}
-    
 	Return leagues
 }
 
@@ -709,6 +710,89 @@ FunctionGetLeaguesJSON(){
     FileAppend, %json%, %LeagueJSONFile%
     
     Return, json
+}
+
+; ------------------ CHECK IF A TEMP-LEAGUE IS ACTIVE ------------------ 
+FunctionCheckIfTempLeagueIsRunning() {
+    tempLeagueDates := FunctionGetTempLeagueDates()
+    
+    UTCTimestamp := GetTimestampUTC()
+    UTCFormatStr := "yyyy-MM-dd'T'HH:mm:ss'Z'"
+    FormatTime, TimeStr, %UTCTimestamp%, %UTCFormatStr%
+    
+    timeDiffStart := DateParse(TimeStr) - DateParse(tempLeagueDates["start"])
+    timeDiffEnd := DateParse(TimeStr) - DateParse(tempLeagueDates["end"])
+    
+    If (timeDiffStart > 0 && timeDiffEnd < 0) {
+        ; Current datetime is between temp league start and end date
+        defaultLeague := "tmpstandard"
+        Return 1
+    }
+    Else {
+        defaultLeague := "standard"
+        Return 0
+    }
+}
+
+GetTimestampUTC() { ; http://msdn.microsoft.com/en-us/library/ms724390
+   VarSetCapacity(ST, 16, 0) ; SYSTEMTIME structure
+   DllCall("Kernel32.dll\GetSystemTime", "Ptr", &ST)
+   Return NumGet(ST, 0, "UShort")                        ; year   : 4 digits until 10000
+        . SubStr("0" . NumGet(ST,  2, "UShort"), -1)     ; month  : 2 digits forced
+        . SubStr("0" . NumGet(ST,  6, "UShort"), -1)     ; day    : 2 digits forced
+        . SubStr("0" . NumGet(ST,  8, "UShort"), -1)     ; hour   : 2 digits forced
+        . SubStr("0" . NumGet(ST, 10, "UShort"), -1)     ; minute : 2 digits forced
+        . SubStr("0" . NumGet(ST, 12, "UShort"), -1)     ; second : 2 digits forced
+}
+
+DateParse(str) {
+    ; Parse ISO 8601 Formatted Date/Time to YYYYMMDDHH24MISS timestamp
+    str := RegExReplace(str, "i)-|T|:|Z")
+    Return str
+}
+
+FunctionGetTempLeagueDates(){
+    JSON := FunctionGetLeaguesJSON()    
+    FileRead, JSONFile, leagues.json  
+    ; too dumb to parse the file to JSON Object, skipping this step
+    ;parsedJSON 	:= JSON.Load(JSONFile)	
+     
+    ; complicated way to find start and end dates of temp leagues since JSON.load is not working 
+    foundStart := 
+    foundEnd := 
+    lastOpenBracket := 0
+    lastCloseBracket := 0
+    tempLeagueDates := []
+    
+	Loop, Parse, JSONFile, `n, `r
+	{					
+        If (InStr(A_LoopField, "{", false)) {
+            lastOpenBracket := A_Index
+        }
+        Else If (InStr(A_LoopField, "}", false)) {
+            lastCloseBracket := A_Index
+        }        
+        
+        ; Find startAt and remember line number
+        If RegExMatch(A_LoopField,"iOm)startAt *: *""(.*)""",dates) {
+            If (StrLen(dates[1]) > 0)  {
+                foundStart := A_index
+                start := dates[1]
+            }
+        }            
+        Else If RegExMatch(A_LoopField,"iOm)endAt *: *""(.*)""",dates) {
+            If (!RegExMatch(dates[1], "i)null")) {
+                foundEnd := A_Index
+                end := dates[1]
+            }       
+        }
+        
+        If (foundStart > lastCloseBracket && foundEnd > lastCloseBracket) {
+            tempLeagueDates["start"] := start
+            tempLeagueDates["end"] := end
+            Return tempLeagueDates
+        }          
+    }
 }
 
 ; ------------------ READ ALL OTHER INI VALUES ------------------ 
