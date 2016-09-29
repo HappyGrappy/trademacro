@@ -5,7 +5,7 @@ AutoHotKey script that provides various useful macro for trading in Path of Exil
 2. **ctrl+i** for price checking but with manual input of _item name_.
 3. **f9 to f12** - predefined item search macro which automatically creates a WTB message into your clipboard. Adding _ctrl_ will reset the search, for example **ctrl+10**. _ctrl+f12_ allows you to manually input the _item name_.
 
-![screenshot](https://cloud.githubusercontent.com/assets/75921/18792598/b171221c-81e9-11e6-8cef-e63b8b89b42f.png)
+![screenshot](https://cloud.githubusercontent.com/assets/75921/18938211/c04a6fc0-8629-11e6-8633-7f732ec05888.png)
 
 **How to install/use:**
 
