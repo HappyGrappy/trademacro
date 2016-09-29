@@ -98,17 +98,17 @@ Gosub, SubroutineReadIniValues
 ;
 ; To modify these, you will need to modify the config file
 ; see http://www.autohotkey.com/docs/Hotkeys.htm for hotkey options
-Hotkey, %ReadFromClipboardKey%, ReadFromClipboard
-Hotkey, %CustomInputSearchKey%, CustomInputSearch
-Hotkey, %ConfigPredefSearchesKey%, ConfigPredefSearches
-Hotkey, %PredefSearch01Key%, PredefSearch01
-Hotkey, %RepeatPredefSearchModifier%%PredefSearch01Key%, RepeatPredefSearch01
-Hotkey, %PredefSearch02Key%, PredefSearch02
-Hotkey, %RepeatPredefSearchModifier%%PredefSearch02Key%, RepeatPredefSearch02
-Hotkey, %PredefSearch03Key%, PredefSearch03
-Hotkey, %RepeatPredefSearchModifier%%PredefSearch03Key%, RepeatPredefSearch03
-Hotkey, %PredefSearch04Key%, PredefSearch04
-Hotkey, %RepeatPredefSearchModifier%%PredefSearch04Key%, RepeatPredefSearch04
+AssignHotkey(ReadFromClipboardKey, "ReadFromClipboard")
+AssignHotkey(CustomInputSearchKey, "CustomInputSearch")
+AssignHotkey(ConfigPredefSearchesKey, "ConfigPredefSearches")
+AssignHotkey(PredefSearch01Key, "PredefSearch01")
+AssignHotkey(RepeatPredefSearchModifier . PredefSearch01Key, "RepeatPredefSearch01")
+AssignHotkey(PredefSearch02Key, "PredefSearch02")
+AssignHotkey(RepeatPredefSearchModifier . PredefSearch02Key, "RepeatPredefSearch02")
+AssignHotkey(PredefSearch03Key, "PredefSearch03")
+AssignHotkey(RepeatPredefSearchModifier . PredefSearch03Key, "RepeatPredefSearch03")
+AssignHotkey(PredefSearch04Key, "PredefSearch04")
+AssignHotkey(RepeatPredefSearchModifier . PredefSearch04Key, "RepeatPredefSearch04")
 
 ; How much the mouse needs to move before the hotkey goes away, change in config file
 CoordMode, Mouse, Screen
@@ -689,7 +689,7 @@ FunctionGETLeagues(){
             }
         }        
 	}
-    MsgBox % leagues["tmpstandard"]
+    
 	Return leagues
 }
 
@@ -799,6 +799,35 @@ FunctionGetTempLeagueDates(){
             Return tempLeagueDates
         }          
     }
+}
+
+; ------------------ ASSIGN HOTKEY AND HANDLE ERRORS ------------------ 
+AssignHotkey(Key, Label){
+    Hotkey, %Key%, %Label%, UseErrorLevel
+    if (ErrorLevel)	{
+		if (errorlevel = 1)
+			str := str . "`nASCII '" . Key . "' - 1) The Label parameter specifies a nonexistent label name."
+		else if (errorlevel = 2)
+			str := str . "`nASCII '" . Key . "' - 2) The KeyName parameter specifies one or more keys that are either not recognized or not supported by the current keyboard layout/language."
+		else if (errorlevel = 3)
+			str := str . "`nASCII '" . Key . "' - 3) Unsupported prefix key. For example, using the mouse wheel as a prefix in a hotkey such as WheelDown & Enter is not supported."
+		else if (errorlevel = 4)
+			str := str . "`nASCII '" . Key . "' - 4) The KeyName parameter is not suitable for use with the AltTab or ShiftAltTab actions. A combination of two keys is required. For example: RControl & RShift::AltTab."
+		else if (errorlevel = 5)
+			str := str . "`nASCII '" . Key . "' - 5) The command attempted to modify a nonexistent hotkey."
+		else if (errorlevel = 6)
+			str := str . "`nASCII '" . Key . "' - 6) The command attempted to modify a nonexistent variant of an existing hotkey. To solve this, use Hotkey IfWin to set the criteria to match those of the hotkey to be modified."
+		else if (errorlevel = 50)
+			str := str . "`nASCII '" . Key . "' - 50) Windows 95/98/Me: The command completed successfully but the operating system refused to activate the hotkey. This is usually caused by the hotkey being "" ASCII " . int . " - in use"" by some other script or application (or the OS itself). This occurs only on Windows 95/98/Me because on other operating systems, the program will resort to the keyboard hook to override the refusal."
+		else if (errorlevel = 51)
+			str := str . "`nASCII '" . Key . "' - 51) Windows 95/98/Me: The command completed successfully but the hotkey is not supported on Windows 95/98/Me. For example, mouse hotkeys and prefix hotkeys such as a & b are not supported."
+		else if (errorlevel = 98)
+			str := str . "`nASCII '" . Key . "' - 98) Creating this hotkey would exceed the 1000-hotkey-per-script limit (however, each hotkey can have an unlimited number of variants, and there is no limit to the number of hotstrings)."
+		else if (errorlevel = 99)
+			str := str . "`nASCII '" . Key . "' - 99) Out of memory. This is very rare and usually happens only when the operating system has become unstable."
+        
+        MsgBox, %str%
+	}
 }
 
 ; ------------------ READ ALL OTHER INI VALUES ------------------ 
