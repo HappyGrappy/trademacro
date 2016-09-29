@@ -424,7 +424,7 @@ FunctionParseHtml(html, payload)
         , IGN         := StrX( Item,  "data-ign=""",                              T,10, """"  ,                      1,1     )
         ;, Text .= StrPad(IGN, 30) StrPad(AccountName, 30) StrPad(Buyout,30) "`n"
         ;, Text .= StrPad(IGN,20) StrPad(Buyout,20,"left") "`n"
-        , Text .= StrPad(Buyout,20) StrPad(IGN,20) "`n"
+        , Text .= StrPad(IGN,20) StrPad(Buyout,20)"`n"
     
     Return, Text
 }
@@ -646,8 +646,8 @@ FunctionToWTB(itemName, line)
 {
     RegExMatch(line, "([^\s]+)\s+(.+)", SubPat)
     ign    := SubPat1
-    buyout := SubPat2
-    msg    := "@" ign " I would like to buy your " itemName " listed for " buyout " in " LeagueName
+    buyout := Trim(SubPat2)
+    msg    := "@" ign " I would like to buy your " Trim(itemName) " listed for " buyout " in " LeagueName
     Return msg
 }
 
@@ -714,9 +714,9 @@ SubroutineReadIniValues:
     CustomInputSearchKey := FunctionReadValueFromIni("CustomInputSearchHotKey", "^i", "Hotkeys")
     RepeatPredefSearchModifier := FunctionReadValueFromIni("RepeatPredefinedSearchModifier", "^", "Hotkeys")
     PredefSearch01Key := FunctionReadValueFromIni("PredefinedSearch01HotKey", "F9", "Hotkeys")
-    PredefSearch02Key := FunctionReadValueFromIni("PredefinedSearch01HotKey", "F10", "Hotkeys")
-    PredefSearch03Key := FunctionReadValueFromIni("PredefinedSearch01HotKey", "F11", "Hotkeys")
-    PredefSearch04Key := FunctionReadValueFromIni("PredefinedSearch01HotKey", "F12", "Hotkeys")
+    PredefSearch02Key := FunctionReadValueFromIni("PredefinedSearch02HotKey", "F10", "Hotkeys")
+    PredefSearch03Key := FunctionReadValueFromIni("PredefinedSearch03HotKey", "F11", "Hotkeys")
+    PredefSearch04Key := FunctionReadValueFromIni("PredefinedSearch04HotKey", "F12", "Hotkeys")
 return
 
 ; ------------------ READ INI AND CHECK IF VARIABLES ARE SET ------------------ 
