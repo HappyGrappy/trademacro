@@ -66,7 +66,8 @@ FileCreateDir, %A_WorkingDir%\tempFiles
 ; *******************************************************************
 ; *******************************************************************
 ; League Name must be specified in config file, otherwise the search defaults to Standard League
-global LeagueJSONFile := "tempFiles\leagues.json"
+global tempFilesDirectory = "tempFiles\"
+global LeagueJSONFile := tempFilesDirectory . "leagues.json"
 global Leagues := FunctionGETLeagues()
 global iniFilePath := "config.ini"
 global tempLeagueIsRunning := FunctionCheckIfTempLeagueIsRunning()
@@ -401,9 +402,9 @@ FunctionDoPostRequest(payload)
     ; Dear GGG, it would be nice if you can provide an API like http://pathofexile.com/trade/search?name=Veil+of+the+night&links=4
     ; Pete's indexer is open sourced here - https://github.com/trackpete/exiletools-indexer you can use this to provide this api
     html := HttpObj.ResponseText
-    ;FileRead, html, tempFiles\Test1.txt
-    ;FileDelete, tempFiles\html.htm
-    ;FileAppend, %html%, tempFiles\html.htm
+    ;FileRead, html, %tempFilesDirectory%Test1.txt
+    ;FileDelete, %tempFilesDirectory%html.htm
+    ;FileAppend, %html%, %tempFilesDirectory%html.htm
     
     Return, html
 }
@@ -536,7 +537,7 @@ FunctionPredefSearch01(reset = false) {
         
     Payload := "league=" . LeagueName . "&type=Gem&base=&name=Added+Chaos+Damage&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
     
-    filename := "PredefSearch01-result.txt"
+    filename := tempFilesDirectory . "PredefSearch01-result.txt"
     FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     LineNumber += 1
 }
@@ -562,7 +563,7 @@ FunctionPredefSearch02(reset = false) {
         
     Payload := "league=" . LeagueName . "&type=Jewel&base=&name=&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=%23%25+increased+maximum+Life&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&mod_name=%28pseudo%29+%28total%29+%2B%23%25+to+Cold+Resistance&mod_min=&mod_max=&mod_name=%28pseudo%29+%28total%29+%2B%23%25+to+Lightning+Resistance&mod_min=&mod_max=&mod_name=%28pseudo%29+%28total%29+%2B%23%25+to+Fire+Resistance&mod_min=&mod_max=&group_type=Count&group_min=2&group_max=&group_count=3&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
     
-    filename := "PredefSearch02-result.txt"
+    filename := tempFilesDirectory . "PredefSearch02-result.txt"
     FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     LineNumber += 1
 }
@@ -588,7 +589,7 @@ FunctionPredefSearch03(reset = false) {
         
     Payload := "league=" . LeagueName . "&type=&base=&name=Tabula+Rasa+Simple+Robe&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=0&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
     
-    filename := "PredefSearch03-result.txt"
+    filename := tempFilesDirectory . "PredefSearch03-result.txt"
     FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     LineNumber += 1
 }
@@ -617,7 +618,7 @@ FunctionPredefSearch04(reset = false) {
         
     Payload := "league=" . LeagueName . "&type=&base=&name=" . ItemName . "&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
     
-    filename := "PredefSearch04-result.txt"
+    filename := tempFilesDirectory . "PredefSearch04-result.txt"
     FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     LineNumber += 1
 }
@@ -630,8 +631,8 @@ FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     IfNotExist, %A_ScriptDir%\%filename%
         FunctionDoFreshMacroSearch(Payload, filename)
     
-    FileReadLine, line, %A_ScriptDir%\tempFiles\%filename%, %LineNumber%
-    FileReadLine, itemName, %A_ScriptDir%\tempFiles\%filename%, 1
+    FileReadLine, line, %A_ScriptDir%\%filename%, %LineNumber%
+    FileReadLine, itemName, %A_ScriptDir%\%filename%, 1
 
     if (!line)
         result := "No more items found in " filename
@@ -665,7 +666,7 @@ FunctionToWTB(itemName, line)
 ; ------------------ GET LEAGUES ------------------ 
 FunctionGETLeagues(){
     JSON := FunctionGetLeaguesJSON()    
-    FileRead, JSONFile, temp\leagues.json  
+    FileRead, JSONFile, %tempFilesDirectory%leagues.json  
     ; too dumb to parse the file to JSON Object, skipping this tstep
     ;parsedJSON 	:= JSON.Load(JSONFile)	
         
@@ -688,6 +689,7 @@ FunctionGETLeagues(){
             }
         }        
 	}
+    MsgBox % leagues["tmpstandard"]
 	Return leagues
 }
 
@@ -757,7 +759,7 @@ DateParse(str) {
 
 FunctionGetTempLeagueDates(){
     JSON := FunctionGetLeaguesJSON()    
-    FileRead, JSONFile, temp\leagues.json  
+    FileRead, JSONFile, %tempFilesDirectory%leagues.json  
     ; too dumb to parse the file to JSON Object, skipping this step
     ;parsedJSON 	:= JSON.Load(JSONFile)	
      
