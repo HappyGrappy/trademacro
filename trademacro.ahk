@@ -73,11 +73,15 @@ global fontSize := FunctionReadValueFromIni("FontSize", "9", "Misc")
 global Debug :=
 global ReadFromClipboardKey := 
 global CustomInputSearchKey := 
+global ConfigPredefSearchesKey :=
 global PredefSearch01Key :=
 global PredefSearch02Key :=
 global PredefSearch03Key :=
 global PredefSearch04Key :=
 global RepeatPredefSearchModifier :=
+global PredefinedSearch01Url := 
+global PredefinedSearch02Url := 
+global PredefinedSearch03Url := 
 
 Gosub, SubroutineReadIniValues
 
@@ -89,6 +93,7 @@ Gosub, SubroutineReadIniValues
 ; see http://www.autohotkey.com/docs/Hotkeys.htm for hotkey options
 Hotkey, %ReadFromClipboardKey%, ReadFromClipboard
 Hotkey, %CustomInputSearchKey%, CustomInputSearch
+Hotkey, %ConfigPredefSearchesKey%, ConfigPredefSearches
 Hotkey, %PredefSearch01Key%, PredefSearch01
 Hotkey, %RepeatPredefSearchModifier%%PredefSearch01Key%, RepeatPredefSearch01
 Hotkey, %PredefSearch02Key%, PredefSearch02
@@ -712,11 +717,15 @@ SubroutineReadIniValues:
     Debug := FunctionReadValueFromIni("Debug", 0, "Debug")
     ReadFromClipboardKey := FunctionReadValueFromIni("PriceCheckHotKey", "^q", "Hotkeys")
     CustomInputSearchKey := FunctionReadValueFromIni("CustomInputSearchHotKey", "^i", "Hotkeys")
+    ConfigPredefSearchesKey := FunctionReadValueFromIni("ConfigPredefSearchesHotKey", "^o", "Hotkeys")
     RepeatPredefSearchModifier := FunctionReadValueFromIni("RepeatPredefinedSearchModifier", "^", "Hotkeys")
     PredefSearch01Key := FunctionReadValueFromIni("PredefinedSearch01HotKey", "F9", "Hotkeys")
     PredefSearch02Key := FunctionReadValueFromIni("PredefinedSearch02HotKey", "F10", "Hotkeys")
     PredefSearch03Key := FunctionReadValueFromIni("PredefinedSearch03HotKey", "F11", "Hotkeys")
     PredefSearch04Key := FunctionReadValueFromIni("PredefinedSearch04HotKey", "F12", "Hotkeys")
+    PredefinedSearch01Url := FunctionReadValueFromIni("PredefinedSearch01Url", "", "Search")
+    PredefinedSearch02Url := FunctionReadValueFromIni("PredefinedSearch02Url", "", "Search")
+    PredefinedSearch03Url := FunctionReadValueFromIni("PredefinedSearch03Url", "", "Search")
 return
 
 ; ------------------ READ INI AND CHECK IF VARIABLES ARE SET ------------------ 
@@ -754,4 +763,45 @@ FunctionWriteValueToIni(IniKey,NewValue,IniSection){
 		s := "Config updated."
 	
 	Gosub, SubroutineReadIniValues
+}
+
+; ------------------ Create and handle Gui Window to configure predefined searches ------------------
+ConfigPredefSearches:
+    GoSub, SubroutineCreatePredefGui
+return
+
+SubroutineCreatePredefGui:
+    Gui, SearchConfig: New
+    
+    Gui, Add, Text, cGreen w230, Add poe.trade search URLs as predefined searches. Keep in mind to select the right league since these urls don't use the league specified in the config.ini file.
+    Gui, Add, Link, cBlue, <a href="http://poe.trade">(visit poe.trade)</a>
+    
+    Gui, Add, Text, cBlack, Predefined Search Nr. 1 (%PredefSearch01Key%):
+    Gui, Add, Edit, r1 vPredefinedSearch01Url w230, %PredefinedSearch01Url%
+    Gui, Add, Text, cBlack, Predefined Search Nr. 2 (%PredefSearch02Key%):
+    Gui, Add, Edit, r1 vPredefinedSearch02Url w230, %PredefinedSearch02Url%
+    Gui, Add, Text, cBlack, Predefined Search Nr. 3 (%PredefSearch03Key%): 
+    Gui, Add, Edit, r1 vPredefinedSearch03Url w230, %PredefinedSearch03Url%
+    
+    Gui, Add, Button, Default gSubroutineSavePredefSearches, &Save
+    Gui, Add, Button, gSubroutineCancelPredefSearches, Cancel
+    Gui, Show
+return
+
+SubroutineSavePredefSearches:
+    Gui, Submit
+    Gui, Destroy
+    FunctionSavePredefSearchesToIni()
+return
+
+SubroutineCancelPredefSearches:
+    Gui, Destroy
+return
+
+FunctionSavePredefSearchesToIni(){
+    ; FunctionWriteValueToIni only writes the first value, no idea why. Therefore we do it wihtout it for now.
+    IniWrite, %PredefinedSearch01Url%, %iniFilePath%, Search, PredefinedSearch01Url
+    IniWrite, %PredefinedSearch02Url%, %iniFilePath%, Search, PredefinedSearch02Url
+    IniWrite, %PredefinedSearch03Url%, %iniFilePath%, Search, PredefinedSearch03Url
+    Gosub, SubroutineReadIniValues
 }
