@@ -69,7 +69,7 @@ global IniLeagueName := FunctionReadValueFromIni("SearchLeague", "tmpstandard", 
 global LeagueName := Leagues[IniLeagueName]
 global MouseMoveThreshold := 
 global CacheExpireAge := FunctionReadValueFromIni("Expire", 0, "Cache")
-global fontSize := FunctionReadValueFromIni("FontSize", "15", "Misc")
+global fontSize := FunctionReadValueFromIni("FontSize", "9", "Misc")
 global Debug :=
 
 Gosub, SubroutineReadIniValues
@@ -181,7 +181,9 @@ FunctionShowToolTipPriceInfo(responsecontent)
 	Global X
     Global Y
     MouseGetPos, X, Y	
-	ToolTipFont("s" . %fontSize%, "Lucida Console")
+    Global fontSize
+    size := "s" . fontSize
+	ToolTipFont(size, "Lucida Console")
     ToolTip, %responsecontent%, X - 135, Y + 30
     SetTimer, SubWatchCursorPrice, 100     
 
