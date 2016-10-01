@@ -3,11 +3,14 @@
 ; as well as POE Item Info https://github.com/aRTy42/POE-ItemInfo
 
 ; Trade Macro
-; Version: 0.1 (2016/09/23)
+; Version: 1.0.0 (2016/09/23)
+global versionNr := "1.0.0"
+global repoName := "thirdy"
+global projectName := "trademacro"
 ; Tested with AutoHotkey112401_Install, Unicode 64-bit
 ; Windows 7
 ;
-; Written by /u/ProFalseIdol on reddit, ManicCompression in game
+; Written by /u/ProFalseIdol on reddit, ManicCompression in game and /u/Eruyome87
 ;
 ; CONFIGURATION NOTE: You must configure the LeagueName properly. Otherwise it will default to
 ; "Standard" - press ^F and search for LeagueName and you will find where to set it.
@@ -90,7 +93,7 @@ global RepeatPredefSearchModifier := FunctionReadValueFromIni("RepeatPredefinedS
 global PredefinedSearch01Url := FunctionReadValueFromIni("PredefinedSearch01Url", "", "Search")
 global PredefinedSearch02Url := FunctionReadValueFromIni("PredefinedSearch02Url", "", "Search")
 global PredefinedSearch03Url := FunctionReadValueFromIni("PredefinedSearch03Url", "", "Search")
-
+FunctionGetLatestRelease()
 ; There are multiple hotkeys to run this script now, defaults set as follows:
 ; ^p (CTRL-p) - Sends the item information to my server, where a price check is performed. Levels and quality will be automatically processed.
 ; ^i (CTRL-i) - Pulls up an interactive search box that goes away after 30s or when you hit enter/ok
@@ -442,6 +445,36 @@ FunctionDoPostRequest(payload)
     ;FileAppend, %html%, %tempFilesDirectory%html.htm
     
     Return, html
+}
+
+FunctionGetLatestRelease() {
+    HttpObj := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+    url := "https://github.com/" . repoName . "/" . projectName . "/releases"
+    tagsUrl = url . "/tags" 
+    HttpObj.Open("GET",url)
+    HttpObj.SetRequestHeader("Content-type","application/html")
+    HttpObj.Send("")
+    HttpObj.WaitForResponse()
+    
+    html := HttpObj.ResponseText
+    tag := StrX( html,  "<span class=""tag-name",N,0,  "</span>", 1,0, N )
+    RegExMatch(tag, "i)>(.*)<", match)
+    tag := match1
+    
+    RegExMatch(tag, "(\d).(\d).(\d)(.*)", latestVersion)
+    RegExMatch(versionNr, "(\d).(\d).(\d)(.*)", currentVersion)
+    
+    Loop, 3 {
+        If (latestVersion%A_Index% > currentVersion%A_Index%) {
+            Gui, UpdateAvailable: New
+    
+            Gui, Add, Text, cBlack w230, Current version: %versionNr%
+            Gui, Add, Text, cGreen w230, New version available, grab it here:
+            Gui, Add, Link, cBlue, <a href="%url%">(%projectName% %tag% on Github)</a>
+            Gui, Show
+            break
+        }
+    }
 }
 
 FunctionParseHtml(html, payload)
