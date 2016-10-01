@@ -499,14 +499,14 @@ FunctionParseHtml(html, payload)
     Text := ItemName " " Quality "`n ---------- `n"
         
     itemCount := 1
-    median := 0
+    prices := []
+    average := 0
     While A_Index < 99 {
-        ChaosValue :=
         ChaosValue := StrX( html,  "data-name=""price_in_chaos""",N,0,  "currency", 1,0, N)
         If (StrLen(ChaosValue) <= 0) {
             Continue
         }  Else { 
-            itemCount := A_Index        
+            itemCount++        
             ;MsgBox % itemCount "`n`n" ChaosValue
         }
         
@@ -514,12 +514,20 @@ FunctionParseHtml(html, payload)
         If (StrLen(priceChaos1) > 0) {
             SetFormat, float, 6.2            
             StringReplace, FloatNumber, priceChaos1, ., `,, 1
-            median += priceChaos1
+            average += priceChaos1
+            prices[itemCount-1] := priceChaos1
         }
     }
     
-    If (median > 0) {
-        median := median / itemCount
+    If (prices.MaxIndex() > 0) {
+        average := average / itemCount
+        If (prices.MaxIndex()&1) {
+            median := prices[prices.MaxIndex()/2]
+        }
+        Else {
+            median := (prices[Floor(prices.MaxIndex()/2)] + prices[Ceil(prices.MaxIndex()/2)]) / 2
+        }
+        Text .= "Average price in chaos: " average " (" itemCount " results) `n"
         Text .= "Median price in chaos: " median " (" itemCount " results) `n`n"
     }    
     
