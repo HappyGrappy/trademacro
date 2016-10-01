@@ -50,6 +50,9 @@ If (A_AhkVersion <= "1.1.22")
     exit
 }
 
+;Check if tehre's a newer release available
+FunctionGetLatestRelease()
+
 ; Windows system tray icon
 IfExist, %A_ScriptDir%\icon.ico
     Menu, Tray, Icon, %A_ScriptDir%\icon.ico
@@ -93,7 +96,7 @@ global RepeatPredefSearchModifier := FunctionReadValueFromIni("RepeatPredefinedS
 global PredefinedSearch01Url := FunctionReadValueFromIni("PredefinedSearch01Url", "", "Search")
 global PredefinedSearch02Url := FunctionReadValueFromIni("PredefinedSearch02Url", "", "Search")
 global PredefinedSearch03Url := FunctionReadValueFromIni("PredefinedSearch03Url", "", "Search")
-FunctionGetLatestRelease()
+
 ; There are multiple hotkeys to run this script now, defaults set as follows:
 ; ^p (CTRL-p) - Sends the item information to my server, where a price check is performed. Levels and quality will be automatically processed.
 ; ^i (CTRL-i) - Pulls up an interactive search box that goes away after 30s or when you hit enter/ok
@@ -461,8 +464,8 @@ FunctionGetLatestRelease() {
     RegExMatch(tag, "i)>(.*)<", match)
     tag := match1
     
-    RegExMatch(tag, "(\d).(\d).(\d)(.*)", latestVersion)
-    RegExMatch(versionNr, "(\d).(\d).(\d)(.*)", currentVersion)
+    RegExMatch(tag, "(\d+).(\d+).(\d+)(.*)", latestVersion)
+    RegExMatch(versionNr, "(\d+).(\d+).(\d+)(.*)", currentVersion)
     
     Loop, 3 {
         If (latestVersion%A_Index% > currentVersion%A_Index%) {
@@ -492,11 +495,38 @@ FunctionParseHtml(html, payload)
     {
         Quality = 
     }
+   
     Text := ItemName " " Quality "`n ---------- `n"
-
+        
+    itemCount := 1
+    median := 0
+    While A_Index < 99 {
+        ChaosValue :=
+        ChaosValue := StrX( html,  "data-name=""price_in_chaos""",N,0,  "currency", 1,0, N)
+        If (StrLen(ChaosValue) <= 0) {
+            Continue
+        }  Else { 
+            itemCount := A_Index        
+            ;MsgBox % itemCount "`n`n" ChaosValue
+        }
+        
+        RegExMatch(ChaosValue, "i)data-value=""-?(\d+.?\d+?)""", priceChaos)
+        If (StrLen(priceChaos1) > 0) {
+            SetFormat, float, 6.2            
+            StringReplace, FloatNumber, priceChaos1, ., `,, 1
+            median += priceChaos1
+        }
+    }
+    
+    If (median > 0) {
+        median := median / itemCount
+        Text .= "Median price in chaos: " median " (" itemCount " results) `n`n"
+    }    
+    
     ; Text .= StrX( html,  "<tbody id=""item-container-0",          N,0, "<tr class=""first-line"">",1,28, N )
 
-    NoOfItemsToShow = ShowItems
+    NoOfItemsToShow := ShowItems
+    
     While A_Index < NoOfItemsToShow
           Item        := StrX( html,  "<tbody id=""item-container-" . %A_Index%,  N,0,  "<tr class=""first-line"">", 1,23, N )
         , AccountName := StrX( Item,  "data-seller=""",                           1,13, """"  ,                      1,1,  T )
