@@ -27,6 +27,9 @@
 ; 0.1 (2016/09/23): Re-write to use pure AHK, previous version used Java, project called "longan"
 ;
 
+; Register a function to be called on exit:
+OnExit("ExitFunc")
+
 ; == Startup Options ===========================================
 #SingleInstance force
 #NoEnv 
@@ -54,6 +57,8 @@ else
 }
 
 ; == Variables and Options and Stuff ===========================
+FileRemoveDir, %A_WorkingDir%\tempFiles, 1
+FileCreateDir, %A_WorkingDir%\tempFiles
 
 ; *******************************************************************
 ; *******************************************************************
@@ -61,11 +66,13 @@ else
 ; *******************************************************************
 ; *******************************************************************
 ; League Name must be specified in config file, otherwise the search defaults to Standard League
-
-global LeagueJSONFile := "leagues.json"
+global tempFilesDirectory = "tempFiles\"
+global LeagueJSONFile := tempFilesDirectory . "leagues.json"
 global Leagues := FunctionGETLeagues()
 global iniFilePath := "config.ini"
-global IniLeagueName := FunctionReadValueFromIni("SearchLeague", "tmpstandard", "Search")
+global tempLeagueIsRunning := FunctionCheckIfTempLeagueIsRunning()
+global defaultLeague := ( (tempLeagueIsRunning > 0) ? "tmpstandard" : "standard" )
+global IniLeagueName := FunctionReadValueFromIni("SearchLeague", defaultLeague, "Search")
 global LeagueName := Leagues[IniLeagueName]
 global MouseMoveThreshold := 
 global CacheExpireAge := FunctionReadValueFromIni("Expire", 0, "Cache")
@@ -73,11 +80,15 @@ global fontSize := FunctionReadValueFromIni("FontSize", "9", "Misc")
 global Debug :=
 global ReadFromClipboardKey := 
 global CustomInputSearchKey := 
+global ConfigPredefSearchesKey :=
 global PredefSearch01Key :=
 global PredefSearch02Key :=
 global PredefSearch03Key :=
 global PredefSearch04Key :=
 global RepeatPredefSearchModifier :=
+global PredefinedSearch01Url := 
+global PredefinedSearch02Url := 
+global PredefinedSearch03Url := 
 
 Gosub, SubroutineReadIniValues
 
@@ -87,16 +98,17 @@ Gosub, SubroutineReadIniValues
 ;
 ; To modify these, you will need to modify the config file
 ; see http://www.autohotkey.com/docs/Hotkeys.htm for hotkey options
-Hotkey, %ReadFromClipboardKey%, ReadFromClipboard
-Hotkey, %CustomInputSearchKey%, CustomInputSearch
-Hotkey, %PredefSearch01Key%, PredefSearch01
-Hotkey, %RepeatPredefSearchModifier%%PredefSearch01Key%, RepeatPredefSearch01
-Hotkey, %PredefSearch02Key%, PredefSearch02
-Hotkey, %RepeatPredefSearchModifier%%PredefSearch02Key%, RepeatPredefSearch02
-Hotkey, %PredefSearch03Key%, PredefSearch03
-Hotkey, %RepeatPredefSearchModifier%%PredefSearch03Key%, RepeatPredefSearch03
-Hotkey, %PredefSearch04Key%, PredefSearch04
-Hotkey, %RepeatPredefSearchModifier%%PredefSearch04Key%, RepeatPredefSearch04
+AssignHotkey(ReadFromClipboardKey, "ReadFromClipboard")
+AssignHotkey(CustomInputSearchKey, "CustomInputSearch")
+AssignHotkey(ConfigPredefSearchesKey, "ConfigPredefSearches")
+AssignHotkey(PredefSearch01Key, "PredefSearch01")
+AssignHotkey(RepeatPredefSearchModifier . PredefSearch01Key, "RepeatPredefSearch01")
+AssignHotkey(PredefSearch02Key, "PredefSearch02")
+AssignHotkey(RepeatPredefSearchModifier . PredefSearch02Key, "RepeatPredefSearch02")
+AssignHotkey(PredefSearch03Key, "PredefSearch03")
+AssignHotkey(RepeatPredefSearchModifier . PredefSearch03Key, "RepeatPredefSearch03")
+AssignHotkey(PredefSearch04Key, "PredefSearch04")
+AssignHotkey(RepeatPredefSearchModifier . PredefSearch04Key, "RepeatPredefSearch04")
 
 ; How much the mouse needs to move before the hotkey goes away, change in config file
 CoordMode, Mouse, Screen
@@ -177,8 +189,8 @@ FunctionPostItemData(Payload)
   html := FunctionDoPostRequest(Payload)
   result := FunctionParseHtml(html, Payload)
   
-  ;FileDelete, result.txt
-  ;FileAppend, %result%, result.txt
+  ;FileDelete, tempFiles\result.txt
+  ;FileAppend, %result%, tempFiles\result.txt
   FunctionShowToolTipPriceInfo(result . "`n(0 min ago)")
   
   return result
@@ -396,8 +408,8 @@ StrPutVar(Str, ByRef Var, Enc = "")
 
 FunctionDoPostRequest(payload)
 {
-	;FileDelete, payload.txt
-    ;FileAppend, %payload%, payload.txt
+	;FileDelete, tempFiles\payload.txt
+    ;FileAppend, %payload%, tempFiles\payload.txt
     
     ; TODO: split this function, HTTP POST and Html parsing should be separate
     ; Reference in making POST requests - http://stackoverflow.com/questions/158633/how-can-i-send-an-http-post-request-to-a-server-from-excel-using-vba
@@ -427,9 +439,9 @@ FunctionDoPostRequest(payload)
     ; Dear GGG, it would be nice if you can provide an API like http://pathofexile.com/trade/search?name=Veil+of+the+night&links=4
     ; Pete's indexer is open sourced here - https://github.com/trackpete/exiletools-indexer you can use this to provide this api
     html := HttpObj.ResponseText
-    ;FileRead, html, Test1.txt
-    ;FileDelete, html.htm
-    ;FileAppend, %html%, html.htm
+    ;FileRead, html, %tempFilesDirectory%Test1.txt
+    ;FileDelete, %tempFilesDirectory%html.htm
+    ;FileAppend, %html%, %tempFilesDirectory%html.htm
     
     Return, html
 }
@@ -562,7 +574,7 @@ FunctionPredefSearch01(reset = false) {
         
     Payload := "league=" . LeagueName . "&type=Gem&base=&name=Added+Chaos+Damage&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
     
-    filename := "PredefSearch01-result.txt"
+    filename := tempFilesDirectory . "PredefSearch01-result.txt"
     FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     LineNumber += 1
 }
@@ -588,7 +600,7 @@ FunctionPredefSearch02(reset = false) {
         
     Payload := "league=" . LeagueName . "&type=Jewel&base=&name=&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=%23%25+increased+maximum+Life&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&mod_name=%28pseudo%29+%28total%29+%2B%23%25+to+Cold+Resistance&mod_min=&mod_max=&mod_name=%28pseudo%29+%28total%29+%2B%23%25+to+Lightning+Resistance&mod_min=&mod_max=&mod_name=%28pseudo%29+%28total%29+%2B%23%25+to+Fire+Resistance&mod_min=&mod_max=&group_type=Count&group_min=2&group_max=&group_count=3&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
     
-    filename := "PredefSearch02-result.txt"
+    filename := tempFilesDirectory . "PredefSearch02-result.txt"
     FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     LineNumber += 1
 }
@@ -614,7 +626,7 @@ FunctionPredefSearch03(reset = false) {
         
     Payload := "league=" . LeagueName . "&type=&base=&name=Tabula+Rasa+Simple+Robe&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=0&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
     
-    filename := "PredefSearch03-result.txt"
+    filename := tempFilesDirectory . "PredefSearch03-result.txt"
     FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     LineNumber += 1
 }
@@ -643,7 +655,7 @@ FunctionPredefSearch04(reset = false) {
         
     Payload := "league=" . LeagueName . "&type=&base=&name=" . ItemName . "&dmg_min=&dmg_max=&aps_min=&aps_max=&crit_min=&crit_max=&dps_min=&dps_max=&edps_min=&edps_max=&pdps_min=&pdps_max=&armour_min=&armour_max=&evasion_min=&evasion_max=&shield_min=&shield_max=&block_min=&block_max=&sockets_min=&sockets_max=&link_min=&link_max=&sockets_r=&sockets_g=&sockets_b=&sockets_w=&linked_r=&linked_g=&linked_b=&linked_w=&rlevel_min=&rlevel_max=&rstr_min=&rstr_max=&rdex_min=&rdex_max=&rint_min=&rint_max=&mod_name=&mod_min=&mod_max=&group_type=And&group_min=&group_max=&group_count=1&q_min=&q_max=&level_min=&level_max=&ilvl_min=&ilvl_max=&rarity=&seller=&thread=&identified=&corrupted=&online=x&buyout=x&altart=&capquality=x&buyout_min=&buyout_max=&buyout_currency=&crafted=&enchanted="
     
-    filename := "PredefSearch04-result.txt"
+    filename := tempFilesDirectory . "PredefSearch04-result.txt"
     FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     LineNumber += 1
 }
@@ -658,7 +670,7 @@ FunctionDoMacroSearch(Payload, LineNumber, filename, reset)
     
     FileReadLine, line, %A_ScriptDir%\%filename%, %LineNumber%
     FileReadLine, itemName, %A_ScriptDir%\%filename%, 1
-    
+
     if (!line)
         result := "No more items found in " filename
     else {
@@ -691,7 +703,7 @@ FunctionToWTB(itemName, line)
 ; ------------------ GET LEAGUES ------------------ 
 FunctionGETLeagues(){
     JSON := FunctionGetLeaguesJSON()    
-    FileRead, JSONFile, leagues.json  
+    FileRead, JSONFile, %tempFilesDirectory%leagues.json  
     ; too dumb to parse the file to JSON Object, skipping this tstep
     ;parsedJSON 	:= JSON.Load(JSONFile)	
         
@@ -743,17 +755,133 @@ FunctionGetLeaguesJSON(){
     Return, json
 }
 
+; ------------------ CHECK IF A TEMP-LEAGUE IS ACTIVE ------------------ 
+FunctionCheckIfTempLeagueIsRunning() {
+    tempLeagueDates := FunctionGetTempLeagueDates()
+    
+    UTCTimestamp := GetTimestampUTC()
+    UTCFormatStr := "yyyy-MM-dd'T'HH:mm:ss'Z'"
+    FormatTime, TimeStr, %UTCTimestamp%, %UTCFormatStr%
+    
+    timeDiffStart := DateParse(TimeStr) - DateParse(tempLeagueDates["start"])
+    timeDiffEnd := DateParse(TimeStr) - DateParse(tempLeagueDates["end"])
+    
+    If (timeDiffStart > 0 && timeDiffEnd < 0) {
+        ; Current datetime is between temp league start and end date
+        defaultLeague := "tmpstandard"
+        Return 1
+    }
+    Else {
+        defaultLeague := "standard"
+        Return 0
+    }
+}
+
+GetTimestampUTC() { ; http://msdn.microsoft.com/en-us/library/ms724390
+   VarSetCapacity(ST, 16, 0) ; SYSTEMTIME structure
+   DllCall("Kernel32.dll\GetSystemTime", "Ptr", &ST)
+   Return NumGet(ST, 0, "UShort")                        ; year   : 4 digits until 10000
+        . SubStr("0" . NumGet(ST,  2, "UShort"), -1)     ; month  : 2 digits forced
+        . SubStr("0" . NumGet(ST,  6, "UShort"), -1)     ; day    : 2 digits forced
+        . SubStr("0" . NumGet(ST,  8, "UShort"), -1)     ; hour   : 2 digits forced
+        . SubStr("0" . NumGet(ST, 10, "UShort"), -1)     ; minute : 2 digits forced
+        . SubStr("0" . NumGet(ST, 12, "UShort"), -1)     ; second : 2 digits forced
+}
+
+DateParse(str) {
+    ; Parse ISO 8601 Formatted Date/Time to YYYYMMDDHH24MISS timestamp
+    str := RegExReplace(str, "i)-|T|:|Z")
+    Return str
+}
+
+FunctionGetTempLeagueDates(){
+    JSON := FunctionGetLeaguesJSON()    
+    FileRead, JSONFile, %tempFilesDirectory%leagues.json  
+    ; too dumb to parse the file to JSON Object, skipping this step
+    ;parsedJSON 	:= JSON.Load(JSONFile)	
+     
+    ; complicated way to find start and end dates of temp leagues since JSON.load is not working 
+    foundStart := 
+    foundEnd := 
+    lastOpenBracket := 0
+    lastCloseBracket := 0
+    tempLeagueDates := []
+    
+	Loop, Parse, JSONFile, `n, `r
+	{					
+        If (InStr(A_LoopField, "{", false)) {
+            lastOpenBracket := A_Index
+        }
+        Else If (InStr(A_LoopField, "}", false)) {
+            lastCloseBracket := A_Index
+        }        
+        
+        ; Find startAt and remember line number
+        If RegExMatch(A_LoopField,"iOm)startAt *: *""(.*)""",dates) {
+            If (StrLen(dates[1]) > 0)  {
+                foundStart := A_index
+                start := dates[1]
+            }
+        }            
+        Else If RegExMatch(A_LoopField,"iOm)endAt *: *""(.*)""",dates) {
+            If (!RegExMatch(dates[1], "i)null")) {
+                foundEnd := A_Index
+                end := dates[1]
+            }       
+        }
+        
+        If (foundStart > lastCloseBracket && foundEnd > lastCloseBracket) {
+            tempLeagueDates["start"] := start
+            tempLeagueDates["end"] := end
+            Return tempLeagueDates
+        }          
+    }
+}
+
+; ------------------ ASSIGN HOTKEY AND HANDLE ERRORS ------------------ 
+AssignHotkey(Key, Label){
+    Hotkey, %Key%, %Label%, UseErrorLevel
+    if (ErrorLevel)	{
+		if (errorlevel = 1)
+			str := str . "`nASCII '" . Key . "' - 1) The Label parameter specifies a nonexistent label name."
+		else if (errorlevel = 2)
+			str := str . "`nASCII '" . Key . "' - 2) The KeyName parameter specifies one or more keys that are either not recognized or not supported by the current keyboard layout/language."
+		else if (errorlevel = 3)
+			str := str . "`nASCII '" . Key . "' - 3) Unsupported prefix key. For example, using the mouse wheel as a prefix in a hotkey such as WheelDown & Enter is not supported."
+		else if (errorlevel = 4)
+			str := str . "`nASCII '" . Key . "' - 4) The KeyName parameter is not suitable for use with the AltTab or ShiftAltTab actions. A combination of two keys is required. For example: RControl & RShift::AltTab."
+		else if (errorlevel = 5)
+			str := str . "`nASCII '" . Key . "' - 5) The command attempted to modify a nonexistent hotkey."
+		else if (errorlevel = 6)
+			str := str . "`nASCII '" . Key . "' - 6) The command attempted to modify a nonexistent variant of an existing hotkey. To solve this, use Hotkey IfWin to set the criteria to match those of the hotkey to be modified."
+		else if (errorlevel = 50)
+			str := str . "`nASCII '" . Key . "' - 50) Windows 95/98/Me: The command completed successfully but the operating system refused to activate the hotkey. This is usually caused by the hotkey being "" ASCII " . int . " - in use"" by some other script or application (or the OS itself). This occurs only on Windows 95/98/Me because on other operating systems, the program will resort to the keyboard hook to override the refusal."
+		else if (errorlevel = 51)
+			str := str . "`nASCII '" . Key . "' - 51) Windows 95/98/Me: The command completed successfully but the hotkey is not supported on Windows 95/98/Me. For example, mouse hotkeys and prefix hotkeys such as a & b are not supported."
+		else if (errorlevel = 98)
+			str := str . "`nASCII '" . Key . "' - 98) Creating this hotkey would exceed the 1000-hotkey-per-script limit (however, each hotkey can have an unlimited number of variants, and there is no limit to the number of hotstrings)."
+		else if (errorlevel = 99)
+			str := str . "`nASCII '" . Key . "' - 99) Out of memory. This is very rare and usually happens only when the operating system has become unstable."
+        
+        MsgBox, %str%
+	}
+}
+
 ; ------------------ READ ALL OTHER INI VALUES ------------------ 
 SubroutineReadIniValues:
 	MouseMoveThreshold := FunctionReadValueFromIni("MouseMoveThreshold", 40)
     Debug := FunctionReadValueFromIni("Debug", 0, "Debug")
     ReadFromClipboardKey := FunctionReadValueFromIni("PriceCheckHotKey", "^q", "Hotkeys")
     CustomInputSearchKey := FunctionReadValueFromIni("CustomInputSearchHotKey", "^i", "Hotkeys")
+    ConfigPredefSearchesKey := FunctionReadValueFromIni("ConfigPredefSearchesHotKey", "^o", "Hotkeys")
     RepeatPredefSearchModifier := FunctionReadValueFromIni("RepeatPredefinedSearchModifier", "^", "Hotkeys")
     PredefSearch01Key := FunctionReadValueFromIni("PredefinedSearch01HotKey", "F9", "Hotkeys")
     PredefSearch02Key := FunctionReadValueFromIni("PredefinedSearch02HotKey", "F10", "Hotkeys")
     PredefSearch03Key := FunctionReadValueFromIni("PredefinedSearch03HotKey", "F11", "Hotkeys")
     PredefSearch04Key := FunctionReadValueFromIni("PredefinedSearch04HotKey", "F12", "Hotkeys")
+    PredefinedSearch01Url := FunctionReadValueFromIni("PredefinedSearch01Url", "", "Search")
+    PredefinedSearch02Url := FunctionReadValueFromIni("PredefinedSearch02Url", "", "Search")
+    PredefinedSearch03Url := FunctionReadValueFromIni("PredefinedSearch03Url", "", "Search")
 return
 
 ; ------------------ READ INI AND CHECK IF VARIABLES ARE SET ------------------ 
@@ -791,4 +919,52 @@ FunctionWriteValueToIni(IniKey,NewValue,IniSection){
 		s := "Config updated."
 	
 	Gosub, SubroutineReadIniValues
+}
+
+; ------------------ Create and handle Gui Window to configure predefined searches ------------------
+ConfigPredefSearches:
+    GoSub, SubroutineCreatePredefGui
+return
+
+SubroutineCreatePredefGui:
+    Gui, SearchConfig: New
+    
+    Gui, Add, Text, cGreen w230, Add poe.trade search URLs as predefined searches. Keep in mind to select the right league since these urls don't use the league specified in the config.ini file.
+    Gui, Add, Link, cBlue, <a href="http://poe.trade">(visit poe.trade)</a>
+    
+    Gui, Add, Text, cBlack, Predefined Search Nr. 1 (%PredefSearch01Key%):
+    Gui, Add, Edit, r1 vPredefinedSearch01Url w230, %PredefinedSearch01Url%
+    Gui, Add, Text, cBlack, Predefined Search Nr. 2 (%PredefSearch02Key%):
+    Gui, Add, Edit, r1 vPredefinedSearch02Url w230, %PredefinedSearch02Url%
+    Gui, Add, Text, cBlack, Predefined Search Nr. 3 (%PredefSearch03Key%): 
+    Gui, Add, Edit, r1 vPredefinedSearch03Url w230, %PredefinedSearch03Url%
+    
+    Gui, Add, Button, Default gSubroutineSavePredefSearches, &Save
+    Gui, Add, Button, gSubroutineCancelPredefSearches, Cancel
+    Gui, Show
+return
+
+SubroutineSavePredefSearches:
+    Gui, Submit
+    Gui, Destroy
+    FunctionSavePredefSearchesToIni()
+return
+
+SubroutineCancelPredefSearches:
+    Gui, Destroy
+return
+
+FunctionSavePredefSearchesToIni(){
+    ; FunctionWriteValueToIni only writes the first value, no idea why. Therefore we do it wihtout it for now.
+    IniWrite, %PredefinedSearch01Url%, %iniFilePath%, Search, PredefinedSearch01Url
+    IniWrite, %PredefinedSearch02Url%, %iniFilePath%, Search, PredefinedSearch02Url
+    IniWrite, %PredefinedSearch03Url%, %iniFilePath%, Search, PredefinedSearch03Url
+    Gosub, SubroutineReadIniValues
+}
+
+; ------------------ Handle OnExit ------------------
+ExitFunc(ExitReason, ExitCode)
+{
+    FileRemoveDir, %A_WorkingDir%\tempFiles, 1
+    ExitApp
 }
