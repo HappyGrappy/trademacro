@@ -74,23 +74,22 @@ global tempLeagueIsRunning := FunctionCheckIfTempLeagueIsRunning()
 global defaultLeague := ( (tempLeagueIsRunning > 0) ? "tmpstandard" : "standard" )
 global IniLeagueName := FunctionReadValueFromIni("SearchLeague", defaultLeague, "Search")
 global LeagueName := Leagues[IniLeagueName]
-global MouseMoveThreshold := 
+global MouseMoveThreshold := FunctionReadValueFromIni("MouseMoveThreshold", 40)
 global CacheExpireAge := FunctionReadValueFromIni("Expire", 0, "Cache")
 global fontSize := FunctionReadValueFromIni("FontSize", "9", "Misc")
-global Debug :=
-global ReadFromClipboardKey := 
-global CustomInputSearchKey := 
-global ConfigPredefSearchesKey :=
-global PredefSearch01Key :=
-global PredefSearch02Key :=
-global PredefSearch03Key :=
-global PredefSearch04Key :=
-global RepeatPredefSearchModifier :=
-global PredefinedSearch01Url := 
-global PredefinedSearch02Url := 
-global PredefinedSearch03Url := 
-
-Gosub, SubroutineReadIniValues
+global Debug := FunctionReadValueFromIni("Debug", 0, "Debug")
+global ShowItems := FunctionReadValueFromIni("ShowItems", "15", "Misc")
+global ReadFromClipboardKey := FunctionReadValueFromIni("PriceCheckHotKey", "^q", "Hotkeys")
+global CustomInputSearchKey := FunctionReadValueFromIni("CustomInputSearchHotKey", "^i", "Hotkeys")
+global ConfigPredefSearchesKey := FunctionReadValueFromIni("ConfigPredefSearchesHotKey", "^o", "Hotkeys")
+global PredefSearch01Key := FunctionReadValueFromIni("PredefinedSearch01HotKey", "F9", "Hotkeys")
+global PredefSearch02Key := FunctionReadValueFromIni("PredefinedSearch02HotKey", "F10", "Hotkeys")
+global PredefSearch03Key := FunctionReadValueFromIni("PredefinedSearch03HotKey", "F11", "Hotkeys")
+global PredefSearch04Key := FunctionReadValueFromIni("PredefinedSearch04HotKey", "F12", "Hotkeys")
+global RepeatPredefSearchModifier := FunctionReadValueFromIni("RepeatPredefinedSearchModifier", "^", "Hotkeys")
+global PredefinedSearch01Url := FunctionReadValueFromIni("PredefinedSearch01Url", "", "Search")
+global PredefinedSearch02Url := FunctionReadValueFromIni("PredefinedSearch02Url", "", "Search")
+global PredefinedSearch03Url := FunctionReadValueFromIni("PredefinedSearch03Url", "", "Search")
 
 ; There are multiple hotkeys to run this script now, defaults set as follows:
 ; ^p (CTRL-p) - Sends the item information to my server, where a price check is performed. Levels and quality will be automatically processed.
@@ -110,7 +109,6 @@ AssignHotkey(RepeatPredefSearchModifier . PredefSearch03Key, "RepeatPredefSearch
 AssignHotkey(PredefSearch04Key, "PredefSearch04")
 AssignHotkey(RepeatPredefSearchModifier . PredefSearch04Key, "RepeatPredefSearch04")
 
-; How much the mouse needs to move before the hotkey goes away, change in config file
 CoordMode, Mouse, Screen
 CoordMode, ToolTip, Screen
 
@@ -465,7 +463,7 @@ FunctionParseHtml(html, payload)
 
     ; Text .= StrX( html,  "<tbody id=""item-container-0",          N,0, "<tr class=""first-line"">",1,28, N )
 
-    NoOfItemsToShow = 15
+    NoOfItemsToShow = ShowItems
     While A_Index < NoOfItemsToShow
           Item        := StrX( html,  "<tbody id=""item-container-" . %A_Index%,  N,0,  "<tr class=""first-line"">", 1,23, N )
         , AccountName := StrX( Item,  "data-seller=""",                           1,13, """"  ,                      1,1,  T )
@@ -875,6 +873,7 @@ SubroutineReadIniValues:
     CustomInputSearchKey := FunctionReadValueFromIni("CustomInputSearchHotKey", "^i", "Hotkeys")
     ConfigPredefSearchesKey := FunctionReadValueFromIni("ConfigPredefSearchesHotKey", "^o", "Hotkeys")
     RepeatPredefSearchModifier := FunctionReadValueFromIni("RepeatPredefinedSearchModifier", "^", "Hotkeys")
+    ShowItems := FunctionReadValueFromIni("ShowItems", "15", "Misc")
     PredefSearch01Key := FunctionReadValueFromIni("PredefinedSearch01HotKey", "F9", "Hotkeys")
     PredefSearch02Key := FunctionReadValueFromIni("PredefinedSearch02HotKey", "F10", "Hotkeys")
     PredefSearch03Key := FunctionReadValueFromIni("PredefinedSearch03HotKey", "F11", "Hotkeys")
@@ -898,15 +897,19 @@ FunctionReadValueFromIni(IniKey, DefaultValue = "", Section = "Misc"){
             break
             If InStr(line, IniKey, false) {
                 RegExMatch(line, "= *(.*)", value)
-                If (StrLen(value[1]) = 0) {
+                If (StrLen(value1) = 0) {
                     OutputVar := DefaultValue
+                    
                 }
                 Else {
-                    OutputVar := value[1]
+                    OutputVar := value1
                 }                
             }
         }
     }
+    
+    
+    
 	Return OutputVar
 }
 
