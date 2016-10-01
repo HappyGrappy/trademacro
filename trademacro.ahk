@@ -102,6 +102,8 @@ Hotkey, %RepeatPredefSearchModifier%%PredefSearch04Key%, RepeatPredefSearch04
 CoordMode, Mouse, Screen
 CoordMode, ToolTip, Screen
 
+Fonts.Init(fontSize, fontSize)
+
 ; Price check w/ auto filters
 ReadFromClipboard:
 IfWinActive, Path of Exile ahk_class Direct3DWindowClass 
@@ -195,84 +197,119 @@ FunctionShowToolTipPriceInfo(responsecontent)
     MouseGetPos, X, Y	
     Global fontSize
     size := "s" . fontSize
-	ToolTipFont(size, "Lucida Console")
+	;ToolTipFont(size, "Lucida Console")
+    ToolTip, %responsecontent%, X - 135, Y + 30
+    Fonts.SetFixedFont()
     ToolTip, %responsecontent%, X - 135, Y + 30
     SetTimer, SubWatchCursorPrice, 100     
 
 }
 
-; == Tooltip Custom Font Function ==================
-ToolTipFont(Options := "", Name := "", hwnd := "") {
-    static hfont := 0
-    if (hwnd = "")
-        hfont := Options="Default" ? 0 : _TTG("Font", Options, Name), _TTHook()
-    else
-        DllCall("SendMessage", "ptr", hwnd, "uint", 0x30, "ptr", hfont, "ptr", 0)
-}
- 
-ToolTipColor(Background := "", Text := "", hwnd := "") {
-    static bc := "", tc := ""
-    if (hwnd = "") {
-        if (Background != "")
-            bc := Background="Default" ? "" : _TTG("Color", Background)
-        if (Text != "")
-            tc := Text="Default" ? "" : _TTG("Color", Text)
-        _TTHook()
-    }
-    else {
-        VarSetCapacity(empty, 2, 0)
-        DllCall("UxTheme.dll\SetWindowTheme", "ptr", hwnd, "ptr", 0
-            , "ptr", (bc != "" && tc != "") ? &empty : 0)
-        if (bc != "")
-            DllCall("SendMessage", "ptr", hwnd, "uint", 1043, "ptr", bc, "ptr", 0)
-        if (tc != "")
-            DllCall("SendMessage", "ptr", hwnd, "uint", 1044, "ptr", tc, "ptr", 0)
-    }
-}
- 
-_TTHook() {
-    static hook := 0
-    if !hook
-        hook := DllCall("SetWindowsHookExW", "int", 4
-            , "ptr", RegisterCallback("_TTWndProc"), "ptr", 0
-            , "uint", DllCall("GetCurrentThreadId"), "ptr")
-}
- 
-_TTWndProc(nCode, _wp, _lp) {
-    Critical 999
-   ;lParam  := NumGet(_lp+0*A_PtrSize)
-   ;wParam  := NumGet(_lp+1*A_PtrSize)
-    uMsg    := NumGet(_lp+2*A_PtrSize, "uint")
-    hwnd    := NumGet(_lp+3*A_PtrSize)
-    if (nCode >= 0 && (uMsg = 1081 || uMsg = 1036)) {
-        _hack_ = ahk_id %hwnd%
-        WinGetClass wclass, %_hack_%
-        if (wclass = "tooltips_class32") {
-            ToolTipColor(,, hwnd)
-            ToolTipFont(,, hwnd)
+; == Utility Functions ==================
+
+GetAhkExeFilename(Default_="AutoHotkey.exe")
+{
+    AhkExeFilename := Default_
+    If (A_AhkPath)
+    {
+        StringSplit, AhkPathParts, A_AhkPath, \
+        Loop, % AhkPathParts0
+        {
+            IfInString, AhkPathParts%A_Index%, .exe
+            {
+                AhkExeFilename := AhkPathParts%A_Index%
+                Break
+            }
         }
     }
-    return DllCall("CallNextHookEx", "ptr", 0, "int", nCode, "ptr", _wp, "ptr", _lp, "ptr")
+    return AhkExeFilename
 }
- 
-_TTG(Cmd, Arg1, Arg2 := "") {
-    static htext := 0, hgui := 0
-    if !htext {
-        Gui _TTG: Add, Text, +hwndhtext
-        Gui _TTG: +hwndhgui +0x40000000
+
+; == Tooltip Custom Font Function ==================
+class Fonts {
+    
+    Init(FontSizeFixed, FontSizeUI) 
+    {
+        this.FontSizeFixed := FontSizeFixed
+        this.FontSizeUI := FontSizeUI
+        this.FixedFont := this.CreateFixedFont(FontSizeFixed)
+        this.UIFont := this.CreateUIFont(FontSizeUI)
     }
-    Gui _TTG: %Cmd%, %Arg1%, %Arg2%
-    if (Cmd = "Font") {
-        GuiControl _TTG: Font, %htext%
-        SendMessage 0x31, 0, 0,, ahk_id %htext%
+    
+    CreateFixedFont(FontSize_)
+    {
+        Options :=
+        If (!(FontSize_ == "")) 
+        {
+            Options = s%FontSize_%
+        }
+        Gui Font, %Options%, Courier New
+        Gui Font, %Options%, Consolas
+        Gui Add, Text, HwndHidden, 
+        SendMessage, 0x31,,,, ahk_id %Hidden%
         return ErrorLevel
     }
-    if (Cmd = "Color") {
-        hdc := DllCall("GetDC", "ptr", htext, "ptr")
-        SendMessage 0x138, hdc, htext,, ahk_id %hgui%
-        clr := DllCall("GetBkColor", "ptr", hdc, "uint")
-        DllCall("ReleaseDC", "ptr", htext, "ptr", hdc)
-        return clr
+
+    CreateUIFont(FontSize_)
+    {
+        Options :=
+        If (!(FontSize_ == "")) 
+        {
+            Options = s%FontSize_%
+        }
+        Gui Font, %Options%, Tahoma
+        Gui Font, %Options%, Segoe UI
+        Gui Add, Text, HwndHidden, 
+        SendMessage, 0x31,,,, ahk_id %Hidden%
+        return ErrorLevel
+    }
+    
+    Set(NewFont)
+    {
+        AhkExe := GetAhkExeFilename()
+        SendMessage, 0x30, NewFont, 1,, ahk_class tooltips_class32 ahk_exe %AhkExe%
+        ; Development versions of AHK
+        SendMessage, 0x30, NewFont, 1,, ahk_class tooltips_class32 ahk_exe AutoHotkeyA32.exe
+        SendMessage, 0x30, NewFont, 1,, ahk_class tooltips_class32 ahk_exe AutoHotkeyU32.exe
+        SendMessage, 0x30, NewFont, 1,, ahk_class tooltips_class32 ahk_exe AutoHotkeyU64.exe
+    }
+    
+    SetFixedFont(FontSize_=-1)
+    {
+        If (FontSize_ == -1)
+        {
+            FontSize_ := this.FontSizeFixed
+        }
+        Else
+        {
+            this.FontSizeFixed := FontSize_
+            this.FixedFont := this.CreateFixedFont(FontSize_)
+        }
+        this.Set(this.FixedFont)
+    }
+
+    SetUIFont(FontSize_=-1)
+    {
+        If (FontSize_ == -1)
+        {
+            FontSize_ := this.FontSizeUI
+        }
+        Else
+        {
+            this.FontSizeUI := FontSize_
+            this.UIFont := this.CreateUIFont(FontSize_)
+        }
+        this.Set(this.UIFont)
+    }
+    
+    GetFixedFont()
+    {
+        return this.FixedFont
+    }
+    
+    GetUIFont()
+    {
+        return this.UIFont
     }
 }
 
@@ -424,7 +461,7 @@ FunctionParseHtml(html, payload)
         , IGN         := StrX( Item,  "data-ign=""",                              T,10, """"  ,                      1,1     )
         ;, Text .= StrPad(IGN, 30) StrPad(AccountName, 30) StrPad(Buyout,30) "`n"
         ;, Text .= StrPad(IGN,20) StrPad(Buyout,20,"left") "`n"
-        , Text .= StrPad(IGN,20) StrPad(Buyout,20)"`n"
+        , Text .= StrPad(IGN,20) StrPad(Buyout,20,"left")"`n"
     
     Return, Text
 }
